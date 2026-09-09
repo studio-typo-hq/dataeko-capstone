@@ -31,10 +31,30 @@ PASS  ingest.sh is executable
 **Why `git update-index --chmod=+x` was also needed:** chmod changes the permission on my local filesystem, but Git also needs to record the executable bit so that the permission is preserved when the repository is cloned or checked out elsewhere. git update-index --chmod=+x makes Git track the file as executable.
 
 ## 2. Unquoted `$1` in `scripts/ingest.sh`
-**Symptom:** TODO
-**Cause:** TODO
-**Fix:** TODO
-**Proof:** TODO
+**Symptom:** Running the script with a filename containing spaces initially failed because the unquoted $1 was split into multiple arguments.
+**Cause:** The file path was used as $1 without quotes in the file-existence test. In Bash, unquoted variables are subject to word splitting, so a path such as data/march orders.csv was interpreted as separate words.
+**Fix:** I changed:
+
+if [ ! -f $1 ]; then
+
+to:
+
+if [ ! -f "$1" ]; then
+
+The other uses of $1 that pass the path to commands were already quoted.
+**Proof:** I created a test copy with a space in its filename:
+
+cp data/orders.csv "data/march orders.csv"
+
+Then I ran:
+
+./scripts/ingest.sh "data/march orders.csv"
+
+The script successfully staged the file and reported:
+
+staged march orders.csv — 209 data rows
+
+This proves that the script now handles input paths containing spaces correctly.
 
 ## 3. Dockerfile copies source before installing dependencies
 **Symptom:** TODO
