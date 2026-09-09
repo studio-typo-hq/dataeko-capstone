@@ -5,11 +5,30 @@
 > proved it is fixed. Paste real output — not a description of output.
 
 ## 1. `scripts/ingest.sh` is not executable
-**Symptom:** TODO
-**Cause:** TODO
-**Fix:** TODO
-**Proof:** TODO
-**Why `git update-index --chmod=+x` was also needed:** TODO
+**Symptom:** Running ./scripts/ingest.sh data/orders.csv initially failed with permission denied.
+**Cause:** The script did not have the executable permission bit set. Its file mode was 644, so the operating system would not allow it to be executed directly.
+**Fix:** I ran:
+
+chmod +x scripts/ingest.sh
+git update-index --chmod=+x scripts/ingest.sh
+
+This changed the script permissions to executable and also made Git track the executable bit.
+**Proof:** After the fix, ls -l scripts/ingest.sh showed:
+
+-rwxr-xr-x  1 himanshu  staff  730  9 Sep 18:41 scripts/ingest.sh
+
+I then ran:
+
+./scripts/ingest.sh data/orders.csv
+
+and it successfully produced:
+
+staged orders.csv — 209 data rows
+
+The verification script also changed this check from FAIL to:
+
+PASS  ingest.sh is executable
+**Why `git update-index --chmod=+x` was also needed:** chmod changes the permission on my local filesystem, but Git also needs to record the executable bit so that the permission is preserved when the repository is cloned or checked out elsewhere. git update-index --chmod=+x makes Git track the file as executable.
 
 ## 2. Unquoted `$1` in `scripts/ingest.sh`
 **Symptom:** TODO
