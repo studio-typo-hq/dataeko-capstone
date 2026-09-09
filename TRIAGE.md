@@ -57,10 +57,48 @@ staged march orders.csv — 209 data rows
 This proves that the script now handles input paths containing spaces correctly.
 
 ## 3. Dockerfile copies source before installing dependencies
-**Symptom:** TODO
-**Cause:** TODO
-**Fix:** TODO
-**Proof (build output, before and after):** TODO
+**Symptom:** The original Dockerfile copied the entire repository before running pip install. Because the dependency-install layer came after the source copy, changing application code could invalidate the layer and cause dependencies to be installed again.
+**Cause:** Docker builds layers in instruction order. The original order was:
+
+COPY . .
+RUN pip install --no-cache-dir -r api/requirements.txt
+
+Any change included by COPY . . could therefore invalidate the following dependency-install layer.
+**Fix:** I changed the order so that only the dependency file is copied before installing dependencies:
+
+COPY api/requirements.txt api/requirements.txt
+RUN pip install --no-cache-dir -r api/requirements.txt
+COPY . .
+
+This allows Docker to reuse the dependency-install layer when only application source files change.
+**Proof (build output, before and after):** Before the fix, I built the original Dockerfile with:
+
+docker build --no-cache -t dataeko-before .
+
+The relevant output was:
+
+=> [internal] load build context
+=> => transferring context: 46.80MB
+=> [3/4] COPY . .
+=> [4/4] RUN pip install --no-cache-dir -r api/requirements.txt
+
+The dependency installation took approximately 11.6 seconds.
+
+After the fix, I built the corrected Dockerfile with:
+
+docker build -t dataeko-after .
+
+The relevant output was:
+
+=> [internal] load build context
+=> => transferring context: 273.14kB
+=> [3/5] COPY api/requirements.txt api/requirements.txt
+=> [4/5] RUN pip install --no-cache-dir -r api/requirements.txt
+=> [5/5] COPY . .
+
+The dependency installation took approximately 11.7 seconds.
+
+The build output confirms that the dependency file is now copied and installed before the application source. The large reduction in build context is also visible in this run, although the primary fix is the layer ordering that preserves dependency caching across source-code changes.
 
 ## 4. No `.dockerignore`
 **Symptom:** TODO
