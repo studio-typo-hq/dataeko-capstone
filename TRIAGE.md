@@ -101,10 +101,30 @@ The dependency installation took approximately 11.7 seconds.
 The build output confirms that the dependency file is now copied and installed before the application source. The large reduction in build context is also visible in this run, although the primary fix is the layer ordering that preserves dependency caching across source-code changes.
 
 ## 4. No `.dockerignore`
-**Symptom:** TODO
-**Cause:** TODO
-**Fix:** TODO
-**Proof (context size, before and after):** TODO
+**Symptom:**The repository had no .dockerignore, so Docker included unnecessary files such as the local Python virtual environment in the build context.
+**Cause:** Without a .dockerignore, Docker sends the repository contents to the Docker daemon as build context. The local .venv directory alone was approximately 50 MB.
+**Fix:** I created .dockerignore with:
+
+.git
+.terraform/
+__pycache__/
+*.pyc
+.venv/
+
+This prevents Git metadata, Terraform working files, Python cache files, and the local virtual environment from being sent as Docker build context.
+**Proof (context size, before and after):** Before creating .dockerignore, the Docker build reported:
+
+=> [internal] load build context
+=> => transferring context: 46.80MB
+
+After creating .dockerignore, the build reported:
+
+=> [internal] load .dockerignore
+=> => transferring context: 83B
+=> [internal] load build context
+=> => transferring context: 7.43kB
+
+The build context therefore dropped from 46.80 MB to 7.43 kB, demonstrating that unnecessary files were excluded.
 
 ## 5. API key committed to the repository
 **Symptom:** TODO
