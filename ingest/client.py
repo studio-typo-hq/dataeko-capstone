@@ -13,8 +13,9 @@ import requests
 def fetch_all_orders(
     base_url="http://localhost:8000",
     per_page=100,
+    max_orders=None,
 ):
-    """Fetch every order from the API."""
+    """Fetch every order from the API (or up to max_orders if specified)."""
 
     api_key = os.environ.get("API_KEY", "")
 
@@ -48,7 +49,7 @@ def fetch_all_orders(
 
         orders.extend(results)
 
-        if len(orders) >= payload["total"] or not results:
+        if (max_orders and len(orders) >= max_orders) or len(orders) >= payload["total"] or not results:
             break
 
         page += 1
