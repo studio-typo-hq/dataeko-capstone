@@ -148,3 +148,12 @@ This proves that a source/context change no longer reruns the dependency install
 __pycache__/
 *.pyc
 .venv/
+## 5. Hardcoded API key
+
+**Symptom:** A credential was committed directly in `api/config.py` and duplicated in the GitHub Actions workflow.
+
+**Cause:** The API key was stored as a hardcoded string instead of being supplied through an environment variable and GitHub Actions secret.
+
+**Fix:** Updated `api/config.py` to read `API_KEY` from the `API_KEY` environment variable. Updated `.github/workflows/ci.yml` to provide the value through the GitHub Actions `secrets.API_KEY` secret.
+
+**Proof:** The hardcoded value `dataeko-capstone-2026-secret` is no longer present in either `api/config.py` or `.github/workflows/ci.yml`. The application now uses `os.environ.get("API_KEY")`, and the CI workflow uses `${{ secrets.API_KEY }}`.
