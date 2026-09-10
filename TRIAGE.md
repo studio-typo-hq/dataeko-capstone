@@ -134,3 +134,17 @@ CACHED [4/5] RUN pip install --no-cache-dir -r api/requirements.txt
 The second build completed in 1.6 seconds.
 
 This proves that a source/context change no longer reruns the dependency installation layer.
+## 4. No `.dockerignore`
+
+**Symptom:** The repository did not contain a `.dockerignore` file, so unnecessary repository and local development files could be included in the Docker build context.
+
+**Cause:** No Docker build-context exclusion rules had been configured.
+
+**Fix:** Added `.dockerignore` with exclusions for Git metadata, Terraform state/configuration, Python bytecode/cache files, and the local virtual environment:
+
+```text
+.git
+.terraform/
+__pycache__/
+*.pyc
+.venv/
