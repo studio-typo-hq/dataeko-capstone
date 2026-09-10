@@ -157,3 +157,13 @@ __pycache__/
 **Fix:** Updated `api/config.py` to read `API_KEY` from the `API_KEY` environment variable. Updated `.github/workflows/ci.yml` to provide the value through the GitHub Actions `secrets.API_KEY` secret.
 
 **Proof:** The hardcoded value `dataeko-capstone-2026-secret` is no longer present in either `api/config.py` or `.github/workflows/ci.yml`. The application now uses `os.environ.get("API_KEY")`, and the CI workflow uses `${{ secrets.API_KEY }}`.
+## 6. `requests` call without timeout
+
+**Symptom:** The reference API request in `ingest/loader.py` could wait indefinitely if the server accepted the connection but stopped responding.
+
+**Cause:** The `requests.get()` call did not specify a timeout.
+
+**Fix:** Added a 10-second timeout to the request:
+
+```python
+response = requests.get(url, timeout=10)
