@@ -6,124 +6,131 @@
 
 ## 1. `scripts/ingest.sh` is not executable
 
-**Symptom:** `scripts/ingest.sh` did not have execute permission. `ls -l scripts/ingest.sh` showed `-rw-r--r--`.
+**Symptom:** `scripts/ingest.sh` did not have the executable bit set.
 
-**Cause:** The executable bit was not set on the file.
+**Cause:** The file permissions were `100644`, so Git did not mark the script as executable.
 
-**Fix:** Ran `chmod +x scripts/ingest.sh` and then `git update-index --chmod=+x scripts/ingest.sh` so Git tracks the executable mode.
+**Fix:** Set the executable bit and recorded the permission change in Git:
+
+```text
+chmod +x scripts/ingest.sh
+git update-index --chmod=+x scripts/ingest.sh
+```
 
 **Proof:**
 
 ```text
 $ ls -l scripts/ingest.sh
--rwxr-xr-x  1 deekshithakarri  staff  730 10 Sep 22:11 scripts/ingest.sh
+-rwxr-xr-x ... scripts/ingest.sh
 
 $ git diff --cached --summary
- mode change 100644 => 100755 scripts/ingest.sh
+mode change 100644 => 100755 scripts/ingest.sh
+```
+
+The executable-bit change was committed in:
+
+```text
+58182db fix(ingest): make ingest script executable
 ```
 
 ## 2. Unquoted `$1` in `scripts/ingest.sh`
 
-**Symptom:** The script used an unquoted `$1` when checking whether the supplied CSV file existed. This caused paths containing spaces to be split into multiple arguments.
+**Symptom:** The input path was not quoted in the file existence check. A filename containing spaces could therefore be split into multiple arguments.
 
-**Cause:** The file test used `$1` without quotes:
+**Cause:** The original code used:
 
 ```bash
 if [ ! -f $1 ]; then
 ```
 
-Shell word splitting can break a path such as `data/march orders.csv` into separate arguments.
+The shell performs word splitting on an unquoted `$1`.
 
-**Fix:** Quoted `$1` in the file-existence check:
+**Fix:** Quoted the input path:
 
 ```bash
 if [ ! -f "$1" ]; then
 ```
 
-The other uses of `$1` in the script were already inside double quotes.
-
-**Proof:**
-
-Tested the script with a CSV filename containing a space:
+**Proof:** Created a test copy with a space in its filename and passed the quoted path to the script:
 
 ```text
-$ cp data/orders.csv "data/march orders.csv"
-
 $ ./scripts/ingest.sh "data/march orders.csv"
 staged march orders.csv — 209 data rows
 
 $ ls -l "data/staging/march orders.csv"
--rw-r--r--@ 1 deekshithakarri  staff  10105  10 Sep 22:37 data/staging/march orders.csv
+-rw-r--r--@ ... data/staging/march orders.csv
 ```
 
-The script successfully processed and staged the file with a space in its filename.
+The test file and staged copy were removed after verification.
+
+The code fix was committed in:
+
+```text
+1910602 fix(ingest): quote input path
+```
 
 ## 3. Dockerfile copies source before installing dependencies
 
-**Symptom:** TODO
+**Symptom:** The original Dockerfile copied the entire source tree before running `pip install`. A source/context change therefore invalidated the dependency-install layer and caused dependencies to be installed again.
 
-**Cause:** TODO
+**Cause:** The original layer order was:
 
-**Fix:** TODO
+```text
+COPY . .
+RUN pip install --no-cache-dir -r api/requirements.txt
+```
 
-**Proof (build output, before and after):** TODO
+Because the `COPY . .` layer changed when source files changed, Docker also had to rerun the following `pip install` layer.
 
-## 4. No `.dockerignore`
+**Fix:** Copied only `api/requirements.txt` first, installed dependencies, and copied the application source afterward:
 
-**Symptom:** TODO
+```text
+COPY api/requirements.txt api/requirements.txt
+RUN pip install --no-cache-dir -r api/requirements.txt
+COPY . .
+```
 
-**Cause:** TODO
+This keeps the dependency layer cached when only application source files change.
 
-**Fix:** TODO
+**Proof (build output, before and after):**
 
-**Proof (context size, before and after):** TODO
+Before the fix, a normal build showed:
 
-## 5. Hardcoded API key
+```text
+[3/4] COPY . .
+[4/4] RUN pip install --no-cache-dir -r api/requirements.txt
+```
 
-**Symptom:** TODO
+The dependency installation took approximately 6.1 seconds.
 
-**Cause:** TODO
+A controlled build after creating `cache-test.txt` also showed the dependency layer being rerun under the defective ordering:
 
-**Fix:** TODO
+```text
+[3/4] COPY . .
+[4/4] RUN pip install --no-cache-dir -r api/requirements.txt
+```
 
-**Proof:** TODO
+The `pip install` step took approximately 7.3 seconds.
 
-## 6. `requests` call has no timeout
+After the fix, the first build showed:
 
-**Symptom:** TODO
+```text
+[3/5] COPY api/requirements.txt api/requirements.txt
+[4/5] RUN pip install --no-cache-dir -r api/requirements.txt
+[5/5] COPY . .
+```
 
-**Cause:** TODO
+The dependency installation took 7.0 seconds on the first build.
 
-**Fix:** TODO
+After creating a harmless source/context change with `touch cache-test.txt`, the second build showed:
 
-**Proof:** TODO
+```text
+CACHED [2/5] WORKDIR /app
+CACHED [3/5] COPY api/requirements.txt api/requirements.txt
+CACHED [4/5] RUN pip install --no-cache-dir -r api/requirements.txt
+[5/5] COPY . .
+```
 
-## 7. Missing index migration
+The second build completed in 1.6 seconds.
 
-**Symptom:** TODO
-
-**Cause:** TODO
-
-**Fix:** TODO
-
-**Proof (EXPLAIN and timing, before and after):** TODO
-
-## 8. SSH port 22 is open to the world
-
-**Symptom:** TODO
-
-**Cause:** TODO
-
-**Fix:** TODO
-
-**Proof:** TODO
-
-## 9. Terraform uses `count` for environment-specific buckets
-
-**Symptom:** TODO
-
-**Cause:** TODO
-
-**Fix:** TODO
-
-**Proof (plan before and after removing staging):** TODO
+This proves that a source/context change no longer reruns the dependency installation layer.
