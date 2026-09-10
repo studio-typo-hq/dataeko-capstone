@@ -161,10 +161,18 @@ This proves that the key was removed from the current source code but remains pr
 **What would you have to do in real life?** Treat the exposed key as compromised. I would immediately revoke or rotate the key, update the application and CI configuration with the new secret, and, if necessary, remove the secret from repository history using an appropriate Git history-rewriting tool. The repository history should be considered exposed even after the current file is cleaned.
 
 ## 6. `requests` call with no timeout
-**Symptom:** TODO
-**Cause:** TODO
-**Fix:** TODO
-**Why a hang is worse than an error:** TODO
+
+**Symptom:** The `fetch_reference()` function could wait indefinitely if the API accepted the connection but stopped responding.
+
+**Cause:** The `requests.get(url)` call did not specify a timeout. Without a timeout, the caller can remain blocked while waiting for the server.
+
+**Fix:** I changed the request to use a 10-second timeout:
+
+    response = requests.get(url, timeout=10)
+
+This gives the request a bounded amount of time to complete instead of allowing it to hang indefinitely.
+
+**Why a hang is worse than an error:** A timeout turns an indefinite wait into a predictable failure that the application can catch, log, retry, or report. An indefinite hang can keep resources occupied, delay failure detection, and make incidents harder to diagnose.
 
 ## 7. Missing index on `orders.customer_id`
 **Symptom:** TODO
@@ -174,9 +182,9 @@ This proves that the key was removed from the current source code but remains pr
 **Why the planner changed its mind:** TODO
 
 ## 8. SSH open to `0.0.0.0/0`
-**Symptom:** TODO
+**Symptom:** The `fetch_reference()` function could wait indefinitely if the API accepted the connection but stopped responding.
 **Why nothing warned you:** TODO
-**Fix:** TODO
+**Fix:** I changed the request to use a 10-second timeout:
 **What an attacker does with this:** TODO
 
 ## 9. `count` instead of `for_each`
