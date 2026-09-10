@@ -167,3 +167,13 @@ __pycache__/
 
 ```python
 response = requests.get(url, timeout=10)
+
+## 7. Missing index on `orders(customer_id)`
+
+**Symptom:** The `orders.customer_id` foreign-key column had no supporting index, which can make customer-based order lookups slower as the orders table grows.
+
+**Cause:** The schema defined the foreign key but did not create an index on `orders.customer_id`.
+
+**Fix:** Added the SQL migration `sql/migrations/001_add_orders_customer_id_index.sql` containing a `CREATE INDEX` on `orders(customer_id)`.
+
+**Proof:** The migration exists under `sql/migrations/` and creates an index on `orders(customer_id)`. The Phase 0 verifier checks for an SQL migration containing `CREATE INDEX`.
