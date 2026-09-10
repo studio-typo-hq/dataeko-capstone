@@ -9,7 +9,7 @@ import time
 from collections import defaultdict, deque
 import psycopg
 from flask import Flask, jsonify, request
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import Counter, Gauge, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
 from api.config import API_KEY, DB_DSN, PAGE_SIZE_DEFAULT, PAGE_SIZE_MAX
 
@@ -30,7 +30,10 @@ LATENCY = Histogram(
     ["endpoint"],
 )
 
-# TODO (Phase 4): add a Gauge called capstone_orders_in_flight.
+ORDERS_IN_FLIGHT = Gauge(
+    "capstone_orders_in_flight",
+    "Number of orders requests currently being processed",
+)
 
 
 def db():
@@ -90,52 +93,54 @@ def orders():
             429,
             {"Retry-After": str(retry_after)},
         )
+    ORDERS_IN_FLIGHT.inc()
 
-    # TODO (Phase 2): pagination.
-    #   ?page= and ?per_page=, per_page capped at PAGE_SIZE_MAX.
-    #   The response MUST report count (this page) and total (all rows).
-    #   Week 2 taught you why those are different numbers.
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", PAGE_SIZE_DEFAULT, type=int)
+    try:
+        # existing pagination code
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("per_page", PAGE_SIZE_DEFAULT, type=int)
 
-    if page < 1:
-        return jsonify(error="page must be at least 1"), 400
+        if page < 1:
+            return jsonify(error="page must be at least 1"), 400
 
-    if per_page < 1:
-        return jsonify(error="per_page must be at least 1"), 400
+        if per_page < 1:
+            return jsonify(error="per_page must be at least 1"), 400
 
-    per_page = min(per_page, PAGE_SIZE_MAX)
-    offset = (page - 1) * per_page
+        per_page = min(per_page, PAGE_SIZE_MAX)
+        offset = (page - 1) * per_page
 
-    with db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM orders")
-            total = cur.fetchone()[0]
+        with db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM orders")
+                total = cur.fetchone()[0]
 
-            cur.execute(
-                """
-                SELECT id, customer_id, drink_id, store_id,
-                       qty, ordered_at, status
-                FROM orders
-                ORDER BY id
-                LIMIT %s OFFSET %s
-                """,
-                (per_page, offset),
-            )
+                cur.execute(
+                    """
+                    SELECT id, customer_id, drink_id, store_id,
+                           qty, ordered_at, status
+                    FROM orders
+                    ORDER BY id
+                    LIMIT %s OFFSET %s
+                    """,
+                    (per_page, offset),
+                )
 
-            columns = [description.name for description in cur.description]
-            rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                columns = [description.name for description in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
 
-    REQUESTS.labels("/orders", "GET", 200).inc()
-    LATENCY.labels("/orders").observe(time.time() - start)
+        REQUESTS.labels("/orders", "GET", 200).inc()
+        LATENCY.labels("/orders").observe(time.time() - start)
 
-    return jsonify(
-        count=len(rows),
-        total=total,
-        page=page,
-        per_page=per_page,
-        results=rows,
-    )
+        return jsonify(
+            count=len(rows),
+            total=total,
+            page=page,
+            per_page=per_page,
+            results=rows,
+        )
+
+    finally:
+        ORDERS_IN_FLIGHT.dec()
 
 
 @app.get("/stats")
