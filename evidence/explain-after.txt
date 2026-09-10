@@ -1,0 +1,12 @@
+SET
+                                                            QUERY PLAN                                                             
+-----------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using orders_customer_id_idx on orders  (cost=0.42..84.54 rows=20 width=36) (actual time=0.038..0.423 rows=20 loops=1)
+   Index Cond: (customer_id = 19999)
+ Planning Time: 0.421 ms
+ Execution Time: 0.487 ms
+(4 rows)
+
+
+The index used is orders_customer_id_idx on orders(customer_id).
+With the index available, PostgreSQL chose an Index Scan because the customer_id predicate is selective enough to make indexed lookup cheaper than scanning the whole table.
