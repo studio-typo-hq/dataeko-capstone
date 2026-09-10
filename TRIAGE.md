@@ -187,3 +187,13 @@ response = requests.get(url, timeout=10)
 **Fix:** Removed the public SSH ingress rule from `infra/main.tf`. SSH port 22 is no longer exposed by this security group.
 
 **Proof:** `grep` confirms there is no port 22 ingress rule in `infra/main.tf`. Terraform formatting and `git diff --check` both pass.
+
+## 9. Terraform `count` used for environment buckets
+
+**Symptom:** The environment S3 buckets were created with `count` and list indexes, so removing an environment from the middle of the list could shift resource indexes and cause Terraform to plan unnecessary replacements.
+
+**Cause:** The bucket resource used `count = length(var.environments)` and referenced environments through `count.index`.
+
+**Fix:** Replaced `count` with `for_each = toset(var.environments)` and used `each.key` as the stable environment identifier. Updated the `buckets` output to iterate over the `for_each` resource map.
+
+**Proof:** `grep` confirms `for_each` is present and the old `count = length(...)` expression is absent. Terraform formatting and `git diff --check` pass.
