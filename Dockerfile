@@ -1,12 +1,20 @@
-FROM python:3.13-slim
+FROM python:3.13-slim AS builder
+
+WORKDIR /build
+
+COPY api/requirements.txt api/requirements.txt
+
+RUN pip install --no-cache-dir --prefix=/install -r api/requirements.txt
+
+
+FROM python:3.13-slim AS runtime
 
 WORKDIR /app
 
-# DEFECT: the source is copied BEFORE the dependencies are installed.
-# Week 3 measured what this costs. Every code edit reinstalls everything.
-COPY . .
+COPY --from=builder /install /usr/local
 
-RUN pip install --no-cache-dir -r api/requirements.txt
+COPY api ./api
 
 EXPOSE 8000
+
 CMD ["flask", "--app", "api/app.py", "run", "--host", "0.0.0.0", "--port", "8000"]
