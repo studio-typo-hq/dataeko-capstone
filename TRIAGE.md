@@ -225,10 +225,33 @@ The indexed runs were substantially faster and all used `orders_customer_id_idx`
 **Why the planner changed its mind:** Without an index, PostgreSQL had to scan the `orders` table to find rows matching `customer_id = 12345`. The index provides a direct lookup path for that column, so PostgreSQL estimated that using the index would require much less work than scanning the entire table. It therefore selected a `Bitmap Index Scan` followed by a `Bitmap Heap Scan`.
 
 ## 8. SSH open to `0.0.0.0/0`
-**Symptom:** The `fetch_reference()` function could wait indefinitely if the API accepted the connection but stopped responding.
-**Why nothing warned you:** TODO
-**Fix:** I changed the request to use a 10-second timeout:
-**What an attacker does with this:** TODO
+
+**Symptom:** The API security group allowed SSH traffic on port 22 from `0.0.0.0/0`, meaning any IPv4 address could attempt to connect to the instance.
+
+**Cause:** The SSH ingress rule was configured with an unrestricted CIDR block:
+
+    cidr_blocks = ["0.0.0.0/0"]
+
+This exposes the SSH service to the entire internet and increases the attack surface for password guessing, key attacks, and other unauthorized connection attempts.
+
+**Fix:** I restricted the SSH ingress rule to the VPC CIDR:
+
+    cidr_blocks = ["10.0.0.0/16"]
+
+The application port 8000 was already restricted to the same VPC CIDR and was left unchanged.
+
+**Proof:** The corrected `infra/main.tf` contains:
+
+    ingress {
+      from_port   = 22
+      to_port     = 22
+      protocol    = "tcp"
+      cidr_blocks = ["10.0.0.0/16"]
+    }
+
+I also checked the Git diff to confirm that the only functional change in the security group was the SSH CIDR restriction.
+
+**Why this matters:** SSH should not normally be exposed to the entire internet. Restricting the source range limits which networks can reach the SSH service and reduces the security group's attack surface. In a real deployment, the allowed CIDR should be the smallest trusted administrative network or access path required.
 
 ## 9. `count` instead of `for_each`
 **Plan with `count`, after removing `staging`:** TODO
