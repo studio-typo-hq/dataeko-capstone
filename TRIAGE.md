@@ -254,6 +254,43 @@ I also checked the Git diff to confirm that the only functional change in the se
 **Why this matters:** SSH should not normally be exposed to the entire internet. Restricting the source range limits which networks can reach the SSH service and reduces the security group's attack surface. In a real deployment, the allowed CIDR should be the smallest trusted administrative network or access path required.
 
 ## 9. `count` instead of `for_each`
-**Plan with `count`, after removing `staging`:** TODO
-**Plan with `for_each`, same edit:** TODO
-**Why this is the most dangerous defect in the list:** TODO
+
+**Symptom:** The S3 buckets were created using `count` with a list of environments. This means Terraform identified resources by their numeric position in the list rather than by the environment name.
+
+With the original configuration:
+
+    aws_s3_bucket.env[0] -> dev
+    aws_s3_bucket.env[1] -> staging
+    aws_s3_bucket.env[2] -> prod
+
+When `staging` is removed, `prod` moves from index `2` to index `1`. In a populated Terraform state, this can make Terraform treat the existing `prod` resource as a different resource and potentially cause resource churn.
+
+**Plan with `count`, after removing `staging`:** The plan used positional addresses:
+
+    aws_s3_bucket.env[0] -> himanshu-capstone-dev
+    aws_s3_bucket.env[1] -> himanshu-capstone-prod
+
+The important issue is that `prod` moved from `env[2]` to `env[1]`. Because this exercise did not apply the Terraform configuration, the state was empty, so the plan showed creates rather than an actual destroy/recreate operation.
+
+**Fix:** I changed the S3 resource from `count` to:
+
+    for_each = toset(var.environments)
+
+and changed the bucket name to use:
+
+    each.value
+
+I also updated the output to use a `for` expression because `for_each` creates a map of resources.
+
+**Plan with `for_each`, after removing `staging`:** The plan uses stable environment names as resource keys:
+
+    aws_s3_bucket.env["dev"]  -> himanshu-capstone-dev
+    aws_s3_bucket.env["prod"] -> himanshu-capstone-prod
+
+The plan reported:
+
+    Plan: 3 to add, 0 to change, 0 to destroy.
+
+The state was empty because the resources were not applied, so Terraform had no existing `staging` resource to destroy. The important difference is that `prod` keeps the stable address `env["prod"]` instead of changing its numeric position.
+
+**Why this matters:** `count` is positional and is therefore fragile when items are inserted, removed, or reordered in a list. `for_each` uses stable keys such as `dev`, `staging`, and `prod`, so removing one environment does not change the identity of the remaining resources. This reduces the risk of accidental resource replacement and makes Terraform plans safer and more predictable.
