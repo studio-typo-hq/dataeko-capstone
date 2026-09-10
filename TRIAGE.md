@@ -1,6 +1,6 @@
 # Triage
 
-> Replace every `TODO`. One section per defect, nine in total.
+> One section per defect, nine in total.
 > For each one: what you saw, why it happened, what you changed, and how you
 > proved it is fixed. Paste real output — not a description of output.
 
