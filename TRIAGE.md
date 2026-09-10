@@ -127,11 +127,38 @@ After creating .dockerignore, the build reported:
 The build context therefore dropped from 46.80 MB to 7.43 kB, demonstrating that unnecessary files were excluded.
 
 ## 5. API key committed to the repository
-**Symptom:** TODO
-**Cause:** TODO
-**Fix:** TODO
-**Is the key gone now that you deleted the line?** TODO
-**What would you have to do in real life?** TODO
+**Symptom:** The API key dataeko-capstone-2026-secret was hardcoded in api/config.py and was also directly placed in the GitHub Actions workflow.
+**Cause:** The API configuration stored the credential as a string in source code, and the CI workflow passed the same credential directly in the YAML file. Anyone with access to the repository could read the credential.
+**Fix:** I changed api/config.py to load the API key from the environment:
+
+import os
+API_KEY = os.getenv("API_KEY", "")
+
+I also changed .github/workflows/ci.yml to read the credential from a GitHub Actions secret:
+
+env:
+  API_KEY: ${{ secrets.DATAEKO_API_KEY }}
+
+The old # DEFECT comments were also removed.
+
+**Proof:** I checked the current repository with:
+
+git grep "dataeko-capstone-2026-secret"
+
+The output only showed the expected references in BRIEF.md and scripts/verify.sh; the hardcoded key is no longer present in the application or workflow files.
+
+I then checked Git history with:
+
+git log -p | grep "dataeko-capstone-2026-secret"
+
+The output still showed the old API key in previous commits:
+
++          API_KEY: "dataeko-capstone-2026-secret"
++API_KEY = "dataeko-capstone-2026-secret"
+
+This proves that the key was removed from the current source code but remains present in Git history.
+**Is the key gone now that you deleted the line?** No. It is gone from the current application and workflow files, but it remains in previous Git commits. Removing a secret from the latest version does not erase it from Git history.
+**What would you have to do in real life?** Treat the exposed key as compromised. I would immediately revoke or rotate the key, update the application and CI configuration with the new secret, and, if necessary, remove the secret from repository history using an appropriate Git history-rewriting tool. The repository history should be considered exposed even after the current file is cleaned.
 
 ## 6. `requests` call with no timeout
 **Symptom:** TODO
