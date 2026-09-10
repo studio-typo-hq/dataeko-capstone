@@ -177,3 +177,13 @@ response = requests.get(url, timeout=10)
 **Fix:** Added the SQL migration `sql/migrations/001_add_orders_customer_id_index.sql` containing a `CREATE INDEX` on `orders(customer_id)`.
 
 **Proof:** The migration exists under `sql/migrations/` and creates an index on `orders(customer_id)`. The Phase 0 verifier checks for an SQL migration containing `CREATE INDEX`.
+
+## 8. SSH port 22 open to the world
+
+**Symptom:** The API security group allowed inbound SSH traffic on port 22 from `0.0.0.0/0`, meaning any IPv4 address on the internet could attempt to connect to SSH.
+
+**Cause:** The Terraform security group contained a public ingress rule for TCP port 22.
+
+**Fix:** Removed the public SSH ingress rule from `infra/main.tf`. SSH port 22 is no longer exposed by this security group.
+
+**Proof:** `grep` confirms there is no port 22 ingress rule in `infra/main.tf`. Terraform formatting and `git diff --check` both pass.
