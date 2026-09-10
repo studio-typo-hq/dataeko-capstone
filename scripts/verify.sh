@@ -15,7 +15,17 @@ KEY="${API_KEY:-}"
 ok(){   PASS=$((PASS+1)); printf "  \033[32mPASS\033[0m  %s\n" "$1"; RESULTS="$RESULTS{\"id\":\"$2\",\"result\":\"pass\"},"; }
 no(){   FAIL=$((FAIL+1)); printf "  \033[31mFAIL\033[0m  %s\n     -> %s\n" "$1" "$2"; RESULTS="$RESULTS{\"id\":\"$3\",\"result\":\"fail\"},"; }
 skip(){ SKIP=$((SKIP+1)); printf "  \033[33mSKIP\033[0m  %s (%s)\n" "$1" "$2"; RESULTS="$RESULTS{\"id\":\"$3\",\"result\":\"skip\"},"; }
-head(){ printf "\n\033[1m%s\033[0m\n" "$1"; }
+if [ -d ".venv/bin" ] && ! command -v pytest >/dev/null 2>&1; then
+  export PATH="$PWD/.venv/bin:$PATH"
+fi
+
+head(){
+  if [ "$#" -eq 1 ] && [ "${1#-}" = "$1" ]; then
+    printf "\n\033[1m%s\033[0m\n" "$1"
+  else
+    command head "$@"
+  fi
+}
 
 head "PHASE 0 — triage"
 [ -x scripts/ingest.sh ] && ok "ingest.sh is executable" p0.exec \

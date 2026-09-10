@@ -18,7 +18,7 @@ if [ "$rows" -lt 2 ]; then
   exit 2
 fi
 
-header=$(head -1 "$1")
+header=$(head -1 "$1" | tr -d '\r')
 expected="order_id,customer_id,drink_id,store_id,qty,ordered_at,status"
 if [ "$header" != "$expected" ]; then
   echo "bad header" >&2
