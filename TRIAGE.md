@@ -175,11 +175,54 @@ This gives the request a bounded amount of time to complete instead of allowing 
 **Why a hang is worse than an error:** A timeout turns an indefinite wait into a predictable failure that the application can catch, log, retry, or report. An indefinite hang can keep resources occupied, delay failure detection, and make incidents harder to diagnose.
 
 ## 7. Missing index on `orders.customer_id`
-**Symptom:** TODO
-**Plan before:** TODO
-**Plan after:** TODO
-**Timings, three runs each:** TODO
-**Why the planner changed its mind:** TODO
+
+**Symptom:** Queries filtering orders by `customer_id` initially used a parallel sequential scan. The query returned only 20 rows, but PostgreSQL had to scan the orders table and remove 133327 rows by the filter.
+
+**Plan before:** The query used a `Parallel Seq Scan` on `orders`.
+
+The first captured run reported:
+
+    Parallel Seq Scan on orders
+    Rows Removed by Filter: 133327
+    Execution Time: 77.286 ms
+
+The other two before-index runs reported execution times of 18.921 ms and 26.858 ms. All three runs used the sequential-scan plan.
+
+**Plan after:** I created the migration:
+
+    sql/migrations/001_orders_customer_index.sql
+
+with:
+
+    CREATE INDEX orders_customer_id_idx
+    ON orders(customer_id);
+
+After applying the migration, PostgreSQL changed the plan to:
+
+    Bitmap Index Scan on orders_customer_id_idx
+    Bitmap Heap Scan on orders
+
+The index was verified with `\d orders`:
+
+    "orders_customer_id_idx" btree (customer_id)
+
+**Timings, three runs each:**
+
+Before index:
+
+    Run 1: 77.286 ms
+    Run 2: 18.921 ms
+    Run 3: 26.858 ms
+
+After index:
+
+    Run 1: 0.617 ms
+    Run 2: 3.072 ms
+    Run 3: 0.595 ms
+
+The indexed runs were substantially faster and all used `orders_customer_id_idx`.
+
+**Why the planner changed its mind:** Without an index, PostgreSQL had to scan the `orders` table to find rows matching `customer_id = 12345`. The index provides a direct lookup path for that column, so PostgreSQL estimated that using the index would require much less work than scanning the entire table. It therefore selected a `Bitmap Index Scan` followed by a `Bitmap Heap Scan`.
 
 ## 8. SSH open to `0.0.0.0/0`
 **Symptom:** The `fetch_reference()` function could wait indefinitely if the API accepted the connection but stopped responding.
