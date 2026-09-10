@@ -1,12 +1,19 @@
-FROM python:3.13-slim
+FROM python:3.13-slim AS builder
 
-WORKDIR /app
+WORKDIR /build
 
 COPY api/requirements.txt api/requirements.txt
 
-RUN pip install --no-cache-dir -r api/requirements.txt
+RUN pip install --no-cache-dir --prefix=/install -r api/requirements.txt
 
-COPY . .
+
+FROM python:3.13-slim AS runtime
+
+WORKDIR /app
+
+COPY --from=builder /install /usr/local
+
+COPY api ./api
 
 EXPOSE 8000
 

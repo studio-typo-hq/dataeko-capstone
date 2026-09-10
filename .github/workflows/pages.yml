@@ -1,0 +1,295 @@
+name: Deploy Status Page
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate status page
+        run: |
+          mkdir -p site
+
+          cat > site/index.html <<'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>DATAEKO Capstone — Coffee Company Status</title>
+            <style>
+              :root {
+                color-scheme: dark;
+                font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+              }
+
+              body {
+                margin: 0;
+                background: #111827;
+                color: #f9fafb;
+                line-height: 1.6;
+              }
+
+              .container {
+                width: min(1100px, calc(100% - 40px));
+                margin: 0 auto;
+                padding: 60px 0;
+              }
+
+              header {
+                margin-bottom: 40px;
+              }
+
+              .eyebrow {
+                text-transform: uppercase;
+                letter-spacing: 0.12em;
+                font-size: 0.78rem;
+                font-weight: 700;
+                opacity: 0.7;
+              }
+
+              h1 {
+                font-size: clamp(2rem, 5vw, 4rem);
+                line-height: 1.05;
+                margin: 10px 0;
+              }
+
+              h2 {
+                margin-top: 0;
+              }
+
+              .subtitle {
+                color: #cbd5e1;
+                font-size: 1.1rem;
+              }
+
+              .status {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 14px;
+                border-radius: 999px;
+                background: #064e3b;
+                color: #a7f3d0;
+                font-weight: 700;
+              }
+
+              .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 16px;
+                margin: 24px 0 40px;
+              }
+
+              .card {
+                background: #1f2937;
+                border: 1px solid #374151;
+                border-radius: 16px;
+                padding: 22px;
+              }
+
+              .number {
+                font-size: 2rem;
+                font-weight: 800;
+              }
+
+              .label {
+                color: #94a3b8;
+                font-size: 0.9rem;
+              }
+
+              section {
+                margin: 40px 0;
+              }
+
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                background: #1f2937;
+                border-radius: 16px;
+                overflow: hidden;
+              }
+
+              th,
+              td {
+                padding: 14px 16px;
+                text-align: left;
+                border-bottom: 1px solid #374151;
+              }
+
+              th {
+                color: #cbd5e1;
+                font-size: 0.85rem;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+              }
+
+              .answer {
+                background: #1f2937;
+                border: 1px solid #374151;
+                border-radius: 16px;
+                padding: 24px;
+                margin: 16px 0;
+              }
+
+              .answer h3 {
+                margin-top: 0;
+              }
+
+              a {
+                color: #93c5fd;
+              }
+
+              footer {
+                margin-top: 50px;
+                padding-top: 24px;
+                border-top: 1px solid #374151;
+                color: #94a3b8;
+              }
+            </style>
+          </head>
+
+          <body>
+            <main class="container">
+              <header>
+                <div class="eyebrow">DATAEKO Capstone</div>
+                <h1>Coffee Company Status</h1>
+                <p class="subtitle">
+                  People, orders, analytics, observability and deployment status.
+                </p>
+                <div class="status">● Build generated successfully</div>
+              </header>
+
+              <section>
+                <h2>Project</h2>
+                <div class="grid">
+                  <div class="card">
+                    <div class="label">Name</div>
+                    <strong>Roop</strong>
+                  </div>
+                  <div class="card">
+                    <div class="label">GitHub Username</div>
+                    <strong>Roopvardhan666</strong>
+                  </div>
+                  <div class="card">
+                    <div class="label">Built</div>
+                    <strong>__BUILD_DATE__</strong>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <h2>Database Row Counts</h2>
+                <div class="grid">
+                  <div class="card">
+                    <div class="number">6</div>
+                    <div class="label">Stores</div>
+                  </div>
+                  <div class="card">
+                    <div class="number">18</div>
+                    <div class="label">Drinks</div>
+                  </div>
+                  <div class="card">
+                    <div class="number">20,000</div>
+                    <div class="label">Customers</div>
+                  </div>
+                  <div class="card">
+                    <div class="number">400,200</div>
+                    <div class="label">Orders</div>
+                  </div>
+                  <div class="card">
+                    <div class="number">320,000</div>
+                    <div class="label">Deliveries</div>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <h2>Phase 3 Business Answers</h2>
+
+                <div class="answer">
+                  <h3>1. Revenue by City</h3>
+                  <table>
+                    <tr><th>City</th><th>Revenue (INR)</th></tr>
+                    <tr><td>Bengaluru</td><td>₹15,600,780</td></tr>
+                    <tr><td>Hyderabad</td><td>₹15,599,610</td></tr>
+                    <tr><td>Pune</td><td>₹9,333,560</td></tr>
+                    <tr><td>Chennai</td><td>₹9,333,100</td></tr>
+                    <tr><td>Delhi</td><td>₹4,666,810</td></tr>
+                    <tr><td>Mumbai</td><td>₹4,666,550</td></tr>
+                  </table>
+                </div>
+
+                <div class="answer">
+                  <h3>2. Drinks Never Ordered</h3>
+                  <ul>
+                    <li>16 — turmeric latte</li>
+                    <li>17 — rose cardamom</li>
+                    <li>18 — affogato</li>
+                  </ul>
+                </div>
+
+                <div class="answer">
+                  <h3>3. Orders Without Delivery</h3>
+                  <div class="number">80,200</div>
+                  <p>Orders currently have no corresponding delivery row.</p>
+                </div>
+
+                <div class="answer">
+                  <h3>4. Loyal Customers</h3>
+                  <div class="number">0</div>
+                  <p>Customers with more than 25 orders.</p>
+                </div>
+              </section>
+
+              <section>
+                <h2>Container Image</h2>
+                <p>
+                  Published image:
+                  <a href="https://github.com/Roopvardhan666/dataeko-capstone/pkgs/container/dataeko-capstone">
+                    GHCR package
+                  </a>
+                </p>
+              </section>
+
+              <footer>
+                DATAEKO Capstone · Generated by GitHub Actions ·
+                Phase 5 — Ship
+              </footer>
+            </main>
+          </body>
+          </html>
+          EOF
+
+          sed -i "s/__BUILD_DATE__/$(date -u '+%Y-%m-%d %H:%M UTC')/" site/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
