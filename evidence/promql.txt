@@ -1,0 +1,10 @@
+# Phase 4 — PromQL evidence
+
+# Query: request rate for each API endpoint over the last minute.
+sum by (endpoint) (rate(capstone_requests_total[1m]))
+
+# Actual Prometheus API output:
+{"status":"success","data":{"resultType":"vector","result":[{"metric":{"endpoint":"/orders"},"value":[1789073326.363,"0"]}]}}
+
+# Result:
+# /orders request rate = 0 requests/second at query time.
