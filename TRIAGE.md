@@ -5,11 +5,21 @@
 > proved it is fixed. Paste real output — not a description of output.
 
 ## 1. `scripts/ingest.sh` is not executable
-**Symptom:** TODO
-**Cause:** TODO
-**Fix:** TODO
-**Proof:** TODO
-**Why `git update-index --chmod=+x` was also needed:** TODO
+
+**Symptom:** `scripts/ingest.sh` did not have execute permission. `ls -l scripts/ingest.sh` showed `-rw-r--r--`.
+
+**Cause:** The executable bit was not set on the file.
+
+**Fix:** Ran `chmod +x scripts/ingest.sh` and then `git update-index --chmod=+x scripts/ingest.sh` so Git tracks the executable mode.
+
+**Proof:**
+```text
+$ ls -l scripts/ingest.sh
+-rwxr-xr-x  1 deekshithakarri  staff  730 10 Sep 22:11 scripts/ingest.sh
+
+$ git diff --cached --summary
+ mode change 100644 => 100755 scripts/ingest.sh
+
 
 ## 2. Unquoted `$1` in `scripts/ingest.sh`
 **Symptom:** TODO
