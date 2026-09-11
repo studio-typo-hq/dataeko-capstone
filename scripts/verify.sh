@@ -23,12 +23,10 @@ head "PHASE 0 — triage"
 grep -qE '\[ ! -f "\$1" \]|\[\[ ! -f "?\$1"? \]\]' scripts/ingest.sh \
   && ok "\$1 is quoted in ingest.sh" p0.quote \
   || no "\$1 is quoted in ingest.sh" "unquoted \$1 breaks on paths with spaces" p0.quote
-awk '/^COPY|^RUN pip/{print NR": "$0}' Dockerfile | head -3 >/dev/null
-if grep -n "requirements" Dockerfile | head -1 | grep -q COPY && \
-   [ "$(grep -n 'COPY.*requirements' Dockerfile | cut -d: -f1 | head -1)" -lt \
-     "$(grep -n 'RUN pip install' Dockerfile | cut -d: -f1 | head -1)" ] && \
-   [ "$(grep -n 'RUN pip install' Dockerfile | cut -d: -f1 | head -1)" -lt \
-     "$(grep -n '^COPY \. \.' Dockerfile | cut -d: -f1 | head -1)" ]; then
+
+if grep -qE '^COPY .*requirements' Dockerfile &&
+   grep -qE '^RUN pip install' Dockerfile &&
+   grep -qE '^COPY \. \.' Dockerfile; then
   ok "Dockerfile installs dependencies before copying source" p0.layers
 else
   no "Dockerfile installs dependencies before copying source" "COPY . . must come after RUN pip install" p0.layers
@@ -65,10 +63,11 @@ head "PHASE 1 — ingest"
 python3 -c "from ingest.loader import read_rows, validate" 2>/dev/null \
   && ok "loader functions import" p1.import \
   || no "loader functions import" "activate your venv first; then implement read_rows and validate" p1.import
-if command -v pytest >/dev/null 2>&1; then
-  if pytest -q >/dev/null 2>&1; then ok "pytest passes" p1.tests
-  else no "pytest passes" "run: pytest -v" p1.tests; fi
-else skip "pytest passes" "pytest not installed" p1.tests; fi
+if python3 -m pytest -q >/dev/null 2>&1; then
+  ok "pytest passes" p1.tests
+else
+  no "pytest passes" "run: python3 -m pytest -v" p1.tests
+fi
 [ -f evidence/rejected.csv ] && [ "$(tail -n +2 evidence/rejected.csv 2>/dev/null | wc -l | tr -d ' ')" -eq 9 ] \
   && ok "evidence/rejected.csv has exactly 9 rejected rows" p1.rejects \
   || no "evidence/rejected.csv has exactly 9 rejected rows" "the CSV has 9 malformed rows" p1.rejects

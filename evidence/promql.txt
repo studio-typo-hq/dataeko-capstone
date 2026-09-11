@@ -1,0 +1,45 @@
+Phase 4 Observability — PromQL Evidence
+
+In-flight requests use a Gauge rather than a Counter because the number of requests currently being processed can increase and decrease. A Counter is monotonic and is intended for values that only increase, while a Gauge represents the current value.
+
+1. Request rate over 5 minutes, by endpoint
+
+Query:
+sum by (endpoint) (rate(capstone_requests_total[5m]))
+
+Output:
+{
+"/metrics": 0.19451934804664914,
+"/health": 0,
+"/orders": 0,
+"/stats": 0
+}
+
+2. Error rate as a percentage of all requests
+
+Query:
+100 * sum(rate(capstone_requests_total{status=~"5.."}[5m])) / sum(rate(capstone_requests_total[5m]))
+
+Output:
+0%
+
+3. 95th percentile latency
+
+Query:
+histogram_quantile(0.95, sum by (le) (rate(capstone_request_seconds_bucket[5m])))
+
+Output:
+0.00475 seconds (approximately 4.75 ms)
+
+Prometheus target check:
+
+Query:
+up{job="capstone-api"}
+
+Output:
+1
+
+The API is currently being scraped successfully by Prometheus.
+
+rate() calculates the per-second average increase of a counter over the selected time window. If the API stops and the counter stops being scraped, rate() eventually has no recent samples to calculate a continuing increase. Therefore an error-rate alert based only on request rate would not necessarily fire when the API disappears; the up metric should be used to detect that the target itself is down.
+

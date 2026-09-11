@@ -6,14 +6,18 @@ Run it:  flask --app api/app.py run --port 8000
 """
 import os
 import time
+from collections import defaultdict, deque
+
 import psycopg
 from flask import Flask, jsonify, request
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
 from api.config import API_KEY, DB_DSN, PAGE_SIZE_DEFAULT, PAGE_SIZE_MAX
 
 app = Flask(__name__)
-
+RATE_LIMIT = 10
+RATE_WINDOW = 10
+REQUEST_TIMES = defaultdict(deque)
 REQUESTS = Counter(
     "capstone_requests_total",
     "Total HTTP requests",
@@ -25,7 +29,35 @@ LATENCY = Histogram(
     ["endpoint"],
 )
 
-# TODO (Phase 4): add a Gauge called capstone_orders_in_flight.
+ORDERS_IN_FLIGHT = Gauge(
+    "capstone_orders_in_flight",
+    "Number of HTTP requests currently being processed",
+)
+
+@app.before_request
+def request_started():
+    ORDERS_IN_FLIGHT.inc()
+    request._metrics_start = time.time()
+
+
+@app.after_request
+def request_finished(response):
+    elapsed = time.time() - request._metrics_start
+
+    REQUESTS.labels(
+        request.path,
+        request.method,
+        response.status_code,
+    ).inc()
+
+    LATENCY.labels(request.path).observe(elapsed)
+
+    return response
+
+
+@app.teardown_request
+def request_finished_gauge(exception=None):
+    ORDERS_IN_FLIGHT.dec()
 
 
 def db():
@@ -41,7 +73,19 @@ def authorised(req):
     if token != API_KEY:
         return 403, "that key is not allowed here"
     return 200, None
+def rate_limit_check(token):
+    now = time.time()
+    timestamps = REQUEST_TIMES[token]
 
+    while timestamps and now - timestamps[0] >= RATE_WINDOW:
+        timestamps.popleft()
+
+    if len(timestamps) >= RATE_LIMIT:
+        retry_after = max(1, int(RATE_WINDOW - (now - timestamps[0])))
+        return False, retry_after
+
+    timestamps.append(now)
+    return True, None
 
 @app.get("/health")
 def health():
@@ -55,18 +99,62 @@ def metrics():
 
 @app.get("/orders")
 def orders():
-    start = time.time()
     code, msg = authorised(request)
+
     if code != 200:
-        REQUESTS.labels("/orders", "GET", code).inc()
         return jsonify(error=msg), code
 
-    # TODO (Phase 2): pagination.
-    #   ?page= and ?per_page=, per_page capped at PAGE_SIZE_MAX.
-    #   The response MUST report count (this page) and total (all rows).
-    #   Week 2 taught you why those are different numbers.
-    raise NotImplementedError("Phase 2: implement pagination")
+    token = request.headers.get("Authorization").split(" ", 1)[1]
 
+    allowed, retry_after = rate_limit_check(token)
+
+    if not allowed:
+        return (
+            jsonify(error="rate limit exceeded"),
+            429,
+            {"Retry-After": str(retry_after)},
+        )
+
+    try:
+        page = max(request.args.get("page", 1, type=int), 1)
+        per_page = request.args.get(
+            "per_page",
+            PAGE_SIZE_DEFAULT,
+            type=int,
+        )
+        per_page = max(1, min(per_page, PAGE_SIZE_MAX))
+    except (TypeError, ValueError):
+        return jsonify(error="invalid pagination parameters"), 400
+
+    offset = (page - 1) * per_page
+
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM orders")
+            total = cur.fetchone()[0]
+
+            cur.execute(
+                """
+                SELECT *
+                FROM orders
+                ORDER BY id
+                LIMIT %s OFFSET %s
+                """,
+                (per_page, offset),
+            )
+
+            rows = cur.fetchall()
+            columns = [desc.name for desc in cur.description]
+
+    results = [dict(zip(columns, row)) for row in rows]
+
+    return jsonify(
+        count=len(results),
+        total=total,
+        page=page,
+        per_page=per_page,
+        results=results,
+    )
 
 @app.get("/stats")
 def stats():
