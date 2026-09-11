@@ -1,14 +1,20 @@
+# Stage 1: build/install dependencies
+FROM python:3.13-slim AS builder
+
+WORKDIR /app
+
+COPY api/requirements.txt api/requirements.txt
+
+RUN pip install --no-cache-dir --prefix=/install -r api/requirements.txt
+
+
+# Stage 2: runtime image
 FROM python:3.13-slim
 
 WORKDIR /app
 
-# Install dependencies first so source-code changes do not
-# invalidate the dependency layer.
-COPY api/requirements.txt api/requirements.txt
+COPY --from=builder /install /usr/local
 
-RUN pip install --no-cache-dir -r api/requirements.txt
-
-# Copy application source after dependencies.
 COPY . .
 
 EXPOSE 8000

@@ -1,0 +1,127 @@
+name: GitHub Pages
+
+on:
+  push:
+    branches:
+     - phase-2-serve
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Generate status page
+        run: |
+          mkdir -p _site
+
+          cat > _site/index.html <<'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>DATAEKO Capstone - Coffee Company</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                max-width: 900px;
+                margin: 40px auto;
+                padding: 0 20px;
+                line-height: 1.6;
+              }
+              h1, h2 {
+                margin-bottom: 10px;
+              }
+              .card {
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 20px;
+                margin: 20px 0;
+              }
+              code {
+                background: #f4f4f4;
+                padding: 3px 6px;
+                border-radius: 4px;
+              }
+            </style>
+          </head>
+          <body>
+
+            <h1>DATAEKO Capstone — Ship the Coffee Company</h1>
+
+            <div class="card">
+              <h2>Project</h2>
+              <p><strong>Name:</strong> Deekshitha Karri</p>
+              <p><strong>GitHub:</strong> Deekshitha1104</p>
+              <p><strong>Repository:</strong> dataeko-capstone</p>
+              <p><strong>Build date:</strong> BUILD_DATE</p>
+            </div>
+
+            <div class="card">
+              <h2>Database Row Counts</h2>
+              <ul>
+                <li>Stores: 6</li>
+                <li>Drinks: 18</li>
+                <li>Customers: 20,000</li>
+                <li>Orders: 200</li>
+                <li>Deliveries: 0</li>
+              </ul>
+            </div>
+
+            <div class="card">
+              <h2>Phase 3 Query Answers</h2>
+
+              <h3>1. Revenue by city</h3>
+              <p>Total revenue per city, highest first.</p>
+
+              <h3>2. Drinks never ordered</h3>
+              <p>3 drinks: turmeric latte, rose cardamom, and affogato.</p>
+
+              <h3>3. Undelivered orders</h3>
+              <p>80,000 orders have no delivery row.</p>
+
+              <h3>4. Loyal customers</h3>
+              <p>Customers with more than 25 orders, including order count and total spend.</p>
+            </div>
+
+            <div class="card">
+              <h2>Container Image</h2>
+              <p>
+                GHCR:
+                <code>ghcr.io/deekshitha1104/dataeko-capstone:latest</code>
+              </p>
+            </div>
+
+          </body>
+          </html>
+          EOF
+
+          sed -i "s/BUILD_DATE/$(date -u '+%Y-%m-%d %H:%M:%S UTC')/" _site/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    needs: build
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
