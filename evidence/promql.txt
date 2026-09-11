@@ -1,0 +1,44 @@
+Phase 4 PromQL Evidence
+
+1. Request rate over 5 minutes by endpoint
+
+Query:
+sum by (endpoint) (rate(capstone_requests_total[5m]))
+
+Output:
+{endpoint="/orders"} ~0.6793 requests/second
+
+
+2. Error rate percentage of all requests
+
+Query:
+100 * (
+  sum(rate(capstone_requests_total{status=~"4..|5.."}[5m]))
+  /
+  sum(rate(capstone_requests_total[5m]))
+)
+
+Output:
+~0.084%
+
+
+3. p95 request latency
+
+Query:
+histogram_quantile(
+  0.95,
+  sum by (le, endpoint) (
+    rate(capstone_request_seconds_bucket[5m])
+  )
+)
+
+Output:
+{endpoint="/orders"} 0.075 seconds (~75 ms)
+
+
+Gauge explanation:
+A counter is wrong for in-flight requests because in-flight requests can increase and decrease, while a counter only increases. A Gauge can increase when a request starts and decrease when it finishes.
+
+
+Stopped API explanation:
+rate() calculates the average per-second increase of a counter over the selected time range. If the API stops and no new requests are recorded, the request counter stops increasing, so its rate falls toward zero. An error-rate alert based only on the request error rate would not necessarily fire because when there are no requests, both the error rate and total request rate can be zero, resulting in no meaningful error percentage.

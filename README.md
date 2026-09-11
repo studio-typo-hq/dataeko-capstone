@@ -1,8 +1,8 @@
 # DATAEKO Capstone — Ship the Coffee Company
 
-Final assignment for the Studio Typo × DATAEKO five-week internship.
+[![CI](https://github.com/ChaitnaSree/dataeko-capstone/actions/workflows/ci.yml/badge.svg)](https://github.com/ChaitnaSree/dataeko-capstone/actions/workflows/ci.yml)
 
-**→ Read [BRIEF.md](BRIEF.md). Everything is in there.**
+Final assignment for the Studio Typo × DATAEKO five-week internship.
 
 This repository is **deliberately broken**. It contains nine defects, one per
 thing you were taught. Phase 0 is finding and fixing them.

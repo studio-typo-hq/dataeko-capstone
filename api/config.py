@@ -2,7 +2,9 @@
 
 # DEFECT: this key is committed to a public repository.
 # Every fork, every clone, every person who reads the history has it forever.
-API_KEY = "dataeko-capstone-2026-secret"
+import os
+
+API_KEY = os.environ.get("API_KEY", "")
 
 ADMIN_KEY = "dataeko-capstone-admin"
 

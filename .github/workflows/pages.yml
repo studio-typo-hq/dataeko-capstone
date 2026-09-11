@@ -1,0 +1,148 @@
+name: Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Generate status page
+        run: |
+          mkdir -p _site
+
+          cat > _site/index.html <<'HTML'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Dataeko Capstone Status</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                max-width: 1000px;
+                margin: 40px auto;
+                padding: 20px;
+                line-height: 1.6;
+              }
+              h1, h2 {
+                margin-bottom: 10px;
+              }
+              section {
+                margin: 25px 0;
+                padding: 20px;
+                border: 1px solid #ddd;
+                border-radius: 10px;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+              }
+              th, td {
+                padding: 10px;
+                border-bottom: 1px solid #ddd;
+                text-align: left;
+              }
+              code {
+                background: #f4f4f4;
+                padding: 3px 6px;
+                border-radius: 4px;
+              }
+            </style>
+          </head>
+
+          <body>
+            <h1>Dataeko Capstone Status</h1>
+
+            <section>
+              <h2>Student</h2>
+              <p><strong>Name:</strong> Chaitna Sree Anisetty</p>
+              <p><strong>GitHub:</strong> ChaitnaSree</p>
+              <p><strong>Build date:</strong> ${{ github.event.head_commit.timestamp }}</p>
+            </section>
+
+            <section>
+              <h2>Database Row Counts</h2>
+              <table>
+                <tr><th>Table</th><th>Rows</th></tr>
+                <tr><td>Orders</td><td>400,000</td></tr>
+                <tr><td>Customers</td><td>20,000</td></tr>
+                <tr><td>Drinks</td><td>18</td></tr>
+                <tr><td>Stores</td><td>6</td></tr>
+                <tr><td>Deliveries</td><td>320,000</td></tr>
+              </table>
+            </section>
+
+            <section>
+              <h2>Phase 3 Query Results</h2>
+
+              <h3>1. Revenue by City</h3>
+              <table>
+                <tr><th>City</th><th>Revenue (INR)</th></tr>
+                <tr><td>Bengaluru</td><td>15,600,780</td></tr>
+                <tr><td>Hyderabad</td><td>15,599,610</td></tr>
+                <tr><td>Pune</td><td>9,333,560</td></tr>
+                <tr><td>Chennai</td><td>9,333,100</td></tr>
+                <tr><td>Delhi</td><td>4,666,810</td></tr>
+                <tr><td>Mumbai</td><td>4,666,550</td></tr>
+              </table>
+
+              <h3>2. Drinks Never Ordered</h3>
+              <p>Turmeric latte, Rose cardamom, Affogato</p>
+
+              <h3>3. Undelivered Orders</h3>
+              <p><strong>80,000</strong></p>
+
+              <h3>4. Loyal Customers</h3>
+              <p><strong>0</strong> customers with more than 25 orders.</p>
+            </section>
+
+            <section>
+              <h2>Container Image</h2>
+              <p>
+                <a href="https://github.com/ChaitnaSree/dataeko-capstone/pkgs/container/dataeko-capstone">
+                  GHCR: dataeko-capstone
+                </a>
+              </p>
+            </section>
+
+            <section>
+              <h2>Deployment</h2>
+              <p>GitHub Pages deployment generated automatically by GitHub Actions.</p>
+            </section>
+          </body>
+          </html>
+          HTML
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
