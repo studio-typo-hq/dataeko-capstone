@@ -1,5 +1,9 @@
 # DATAEKO Capstone — Ship the Coffee Company
 
+[![ci](https://github.com/Himanshu5619/dataeko-capstone/actions/workflows/ci.yml/badge.svg)](https://github.com/Himanshu5619/dataeko-capstone/actions/workflows/ci.yml)
+[![Pages](https://img.shields.io/badge/Status_Page-Live-success)](https://himanshu5619.github.io/dataeko-capstone/)
+[![Score](https://img.shields.io/badge/Scorecard-28%2F28_PASS-brightgreen)](evidence/RECEIPT.json)
+
 Final assignment for the Studio Typo × DATAEKO five-week internship.
 
 **→ Read [BRIEF.md](BRIEF.md). Everything is in there.**
