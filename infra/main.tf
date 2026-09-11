@@ -36,23 +36,20 @@ variable "environments" {
   default = ["dev", "staging", "prod"]
 }
 
-# DEFECT: count over a list. Remove the middle environment and read the plan.
-# Today's session measured exactly what this does.
 resource "aws_s3_bucket" "env" {
-  count  = length(var.environments)
-  bucket = "${var.student}-capstone-${var.environments[count.index]}"
+  for_each = toset(var.environments)
+  bucket   = "${var.student}-capstone-${each.value}"
 }
 
 resource "aws_security_group" "api" {
   name        = "${var.student}-capstone-api"
   description = "capstone api"
 
-  # DEFECT: the whole internet can reach SSH on this box.
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["10.0.0.0/16"]
   }
 
   ingress {
@@ -70,4 +67,61 @@ resource "aws_security_group" "api" {
   }
 }
 
-output "buckets" { value = aws_s3_bucket.env[*].bucket }
+# Phase 6.3: IAM role for Lambda execution
+resource "aws_iam_role" "lambda_role" {
+  name = "${var.student}-capstone-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_logs" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# Phase 6.3: Ingest Lambda Function
+resource "aws_lambda_function" "ingest" {
+  filename         = "${path.module}/handler.zip"
+  function_name    = "${var.student}-capstone-ingest"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "handler.lambda_handler"
+  runtime          = "python3.11"
+  source_code_hash = filebase64sha256("${path.module}/handler.zip")
+}
+
+# Phase 6.3: Grant S3 permission to invoke the Lambda function
+resource "aws_lambda_permission" "allow_s3" {
+  statement_id  = "AllowS3Invoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.ingest.function_name
+  principal     = "s3.amazonaws.com"
+  source_arn    = aws_s3_bucket.env["dev"].arn
+}
+
+# Phase 6.3: S3 bucket notification on dev bucket
+resource "aws_s3_bucket_notification" "dev_notification" {
+  bucket = aws_s3_bucket.env["dev"].id
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.ingest.arn
+    events              = ["s3:ObjectCreated:*"]
+  }
+
+  # depends_on ensures the Lambda invoke permission exists before S3 verifies the target
+  depends_on = [aws_lambda_permission.allow_s3]
+}
+
+output "buckets" {
+  value = [for bucket in aws_s3_bucket.env : bucket.bucket]
+}

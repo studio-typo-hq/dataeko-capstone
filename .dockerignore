@@ -1,0 +1,12 @@
+.git/
+.git
+.terraform/
+**/.terraform/
+infra/.terraform/
+__pycache__/
+**/__pycache__/
+*.pyc
+**/*.pyc
+.venv/
+**/.venv/
+.pytest_cache/

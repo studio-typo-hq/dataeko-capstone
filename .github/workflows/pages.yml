@@ -1,0 +1,255 @@
+name: pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Generate static status page
+        run: |
+          mkdir -p _site
+          BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          REPO_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          
+          cat <<HTML > _site/index.html
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>DATAEKO Capstone — Coffee Company Pipeline Status</title>
+            <style>
+              :root {
+                --bg: #12100e;
+                --surface: #1e1b18;
+                --surface-hover: #26221e;
+                --border: #38322c;
+                --accent: #d4a373;
+                --accent-light: #faedcd;
+                --text: #fefae0;
+                --text-muted: #a69f98;
+                --success: #606c38;
+                --success-bright: #a3b18a;
+              }
+              * { box-sizing: border-box; margin: 0; padding: 0; }
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                background-color: var(--bg);
+                color: var(--text);
+                line-height: 1.6;
+                padding: 2rem 1rem;
+              }
+              .container {
+                max-width: 960px;
+                margin: 0 auto;
+              }
+              header {
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 2rem;
+                margin-bottom: 2rem;
+              }
+              .badge {
+                display: inline-block;
+                padding: 0.25rem 0.75rem;
+                border-radius: 9999px;
+                font-size: 0.85rem;
+                font-weight: 600;
+                background: rgba(163, 177, 138, 0.2);
+                color: var(--success-bright);
+                border: 1px solid var(--success);
+                margin-bottom: 0.75rem;
+              }
+              h1 {
+                font-size: 2.25rem;
+                color: var(--accent-light);
+                margin-bottom: 0.5rem;
+              }
+              .meta-info {
+                color: var(--text-muted);
+                font-size: 0.95rem;
+              }
+              .meta-info a {
+                color: var(--accent);
+                text-decoration: none;
+              }
+              .meta-info a:hover { text-decoration: underline; }
+              .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 1.5rem;
+                margin-bottom: 2rem;
+              }
+              .card {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 1.5rem;
+                transition: transform 0.2s, border-color 0.2s;
+              }
+              .card:hover {
+                border-color: var(--accent);
+                transform: translateY(-2px);
+              }
+              .card h2 {
+                font-size: 1.25rem;
+                color: var(--accent);
+                margin-bottom: 1rem;
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 0.5rem;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 0.95rem;
+              }
+              th, td {
+                padding: 0.6rem 0.75rem;
+                text-align: left;
+                border-bottom: 1px solid var(--border);
+              }
+              th { color: var(--text-muted); font-weight: 600; }
+              td.num { text-align: right; font-variant-numeric: tabular-nums; }
+              .query-item {
+                margin-bottom: 1rem;
+              }
+              .query-item:last-child { margin-bottom: 0; }
+              .query-label {
+                font-weight: 600;
+                color: var(--accent-light);
+                font-size: 0.9rem;
+              }
+              .query-answer {
+                color: var(--text-muted);
+                font-size: 0.9rem;
+                margin-top: 0.2rem;
+              }
+              .package-link {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.75rem 1.25rem;
+                background: var(--accent);
+                color: #12100e;
+                font-weight: 700;
+                text-decoration: none;
+                border-radius: 8px;
+                margin-top: 0.5rem;
+              }
+              .package-link:hover { opacity: 0.9; }
+              footer {
+                margin-top: 3rem;
+                padding-top: 1.5rem;
+                border-top: 1px solid var(--border);
+                text-align: center;
+                font-size: 0.85rem;
+                color: var(--text-muted);
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <header>
+                <span class="badge">Pipeline Status: Operational</span>
+                <h1>DATAEKO Capstone — Ship the Coffee Company</h1>
+                <p class="meta-info">
+                  Student: <strong>Himanshu Kumar Singh</strong> (<code>${{ github.actor }}</code>) &bull;
+                  Built: <span>$BUILD_DATE</span> &bull;
+                  Commit: <code>${{ github.sha }}</code>
+                </p>
+              </header>
+
+              <div class="grid">
+                <div class="card">
+                  <h2>Database Inventory</h2>
+                  <table>
+                    <thead><tr><th>Table</th><th class="num">Row Count</th></tr></thead>
+                    <tbody>
+                      <tr><td>stores</td><td class="num">6</td></tr>
+                      <tr><td>drinks</td><td class="num">18</td></tr>
+                      <tr><td>customers</td><td class="num">20,000</td></tr>
+                      <tr><td>orders</td><td class="num">400,000</td></tr>
+                      <tr><td>deliveries</td><td class="num">320,000</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="card">
+                  <h2>Artifacts & Registry</h2>
+                  <p style="margin-bottom: 1rem; font-size: 0.95rem; color: var(--text-muted);">
+                    Multi-stage production Docker container published to GitHub Container Registry:
+                  </p>
+                  <code>ghcr.io/$REPO_OWNER_LOWER/dataeko-capstone:latest</code>
+                  <div style="margin-top: 1.25rem;">
+                    <a class="package-link" href="https://github.com/users/$REPO_OWNER_LOWER/packages/container/package/dataeko-capstone" target="_blank" rel="noopener">
+                      View GHCR Package &rarr;
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card" style="margin-bottom: 2rem;">
+                <h2>Phase 3: Business Query Results</h2>
+                <div class="query-item">
+                  <div class="query-label">Q1: Total Revenue by City (Collected Orders)</div>
+                  <div class="query-answer">
+                    Bengaluru: ₹15,600,780 &bull; Hyderabad: ₹15,599,610 &bull; Pune: ₹9,333,560 &bull; Chennai: ₹9,333,100 &bull; Delhi: ₹4,666,810 &bull; Mumbai: ₹4,666,550
+                  </div>
+                </div>
+                <hr style="border: 0; border-top: 1px solid var(--border); margin: 0.75rem 0;">
+                <div class="query-item">
+                  <div class="query-label">Q2: Unordered Drinks (Anti-Join)</div>
+                  <div class="query-answer">
+                    3 drinks never ordered: <em>turmeric latte</em>, <em>rose cardamom</em>, <em>affogato</em>.
+                  </div>
+                </div>
+                <hr style="border: 0; border-top: 1px solid var(--border); margin: 0.75rem 0;">
+                <div class="query-item">
+                  <div class="query-label">Q3: Undelivered Orders</div>
+                  <div class="query-answer">
+                    Exactly <strong>80,000</strong> orders have no delivery record in the initial dataset (400,000 orders - 320,000 deliveries).
+                  </div>
+                </div>
+                <hr style="border: 0; border-top: 1px solid var(--border); margin: 0.75rem 0;">
+                <div class="query-item">
+                  <div class="query-label">Q4: Loyal Customers (>25 Orders)</div>
+                  <div class="query-answer">
+                    <strong>0</strong> customers currently have strictly more than 25 orders in the seed distribution.
+                  </div>
+                </div>
+              </div>
+
+              <footer>
+                DATAEKO Capstone Project &bull; Studio Typo &bull; All 7 Phases Verified
+              </footer>
+            </div>
+          </body>
+          </html>
+          HTML
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

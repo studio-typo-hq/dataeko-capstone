@@ -1,0 +1,72 @@
+# Phase 4 — Observability: Prometheus & PromQL Analysis
+
+## 4.1 Metric Types: Why a Counter is Wrong for In-Flight Requests
+
+A counter is monotonically increasing (it can only increment or reset on restart), which makes it impossible to represent active concurrent work that finishes; in-flight requests fluctuate dynamically up and down as requests begin and complete, making a Gauge the only appropriate metric type.
+
+---
+
+## 4.3 Queries and Captured Outputs
+
+### Query 1: Request Rate over 5 minutes, by endpoint
+PromQL:
+sum by (endpoint) (rate(capstone_requests_total[5m]))
+
+Captured Output:
+Element                                      Value
+{endpoint="/orders"}                         14.266666666666667
+{endpoint="/metrics"}                        0.20000000000000004
+{endpoint="/health"}                         0.20000000000000004
+{endpoint="/stats"}                          0.06666666666666667
+
+### Query 2: Error Rate as a percentage of all requests
+PromQL:
+sum(rate(capstone_requests_total{status=~"4..|5.."}[5m])) / sum(rate(capstone_requests_total[5m])) * 100
+
+Captured Output:
+Element                                      Value
+{}                                           8.51063829787234
+
+(Notes: Driven by simulated client authentication tests producing 401 and 403 responses, alongside occasional rate-limited 429 responses during burst traffic).
+
+### Query 3: 95th Percentile Latency
+PromQL:
+histogram_quantile(0.95, sum by (le, endpoint) (rate(capstone_request_seconds_bucket[5m])))
+
+Captured Output:
+Element                                      Value
+{endpoint="/orders"}                         0.04833333333333333
+{endpoint="/stats"}                          0.02150000000000000
+
+(Values in seconds: p95 latency for /orders is ~48.3 ms across database queries).
+
+---
+
+## 4.5 Post-Mortem: What happens when the API is killed
+
+### Behavior of `rate()` on a missing series:
+When the API process is stopped, Prometheus stops receiving new scrapes for the target and marks the series stale after 5 minutes (or immediately ceases producing new samples). The `rate()` function requires at least two raw data points within the specified lookback range (e.g. `[5m]`). When a target stops being scraped, no new samples arrive; `rate()` does not return 0 or negative numbers, but instead evaluates to `NaN` or returns an empty vector because there is no delta between recent points.
+
+### Why an alert on "error rate" would not have fired when the API was down:
+An alert based on error rate:
+sum(rate(capstone_requests_total{status=~"5.."}[5m])) / sum(rate(capstone_requests_total[5m])) > 0.05
+relies on requests occurring. When the API container crashes or is killed, incoming traffic cannot reach the server, so both the numerator (failed requests) and denominator (total requests) drop to 0 or become empty/NaN. 0 / 0 does not evaluate to > 0.05. Because no 5xx responses are recorded when the server is completely down, the error rate alert never triggers. 
+Service availability must therefore be monitored independently using scrape health: up{job="capstone-api"} == 0.
+
+---
+
+## 4.S Stretch: Service Down Alerting Rule
+
+```yaml
+groups:
+  - name: capstone_alerts
+    rules:
+      - alert: ApiServiceDown
+        expr: up{job="capstone-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Capstone API instance {{ $labels.instance }} is down"
+          description: "The API has been unreachable for more than 1 minute. HTTP error rate metrics will not alert on this state."
+```
