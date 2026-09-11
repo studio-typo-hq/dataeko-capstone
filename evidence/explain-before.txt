@@ -1,0 +1,12 @@
+                                                        QUERY PLAN                                                        
+--------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=1000.00..7807.23 rows=11519 width=36) (actual time=0.232..22.400 rows=11200 loops=1)
+   Workers Planned: 2
+   Workers Launched: 2
+   ->  Parallel Seq Scan on orders  (cost=0.00..5655.33 rows=4800 width=36) (actual time=0.045..16.065 rows=3733 loops=3)
+         Filter: (ordered_at >= '2025-08-31 18:30:00+00'::timestamp with time zone)
+         Rows Removed by Filter: 129600
+ Planning Time: 0.329 ms
+ Execution Time: 22.717 ms
+(8 rows)
+

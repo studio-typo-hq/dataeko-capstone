@@ -1,0 +1,5 @@
+Query:
+sum by (endpoint) (rate(capstone_requests_total[5m]))
+
+Output:
+endpoint="/orders" 0.003389830508474576
