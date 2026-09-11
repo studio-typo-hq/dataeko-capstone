@@ -1,0 +1,10 @@
+# Request rate over the last 5 minutes
+rate(capstone_requests_total[5m])
+
+# Orders requests currently in flight
+capstone_orders_in_flight
+
+# Request latency
+rate(capstone_request_seconds_sum[5m])
+/
+rate(capstone_request_seconds_count[5m])
