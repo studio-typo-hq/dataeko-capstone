@@ -1,0 +1,12 @@
+SET
+                                                           QUERY PLAN                                                           
+--------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using idx_orders_customer_id on orders  (cost=0.14..8.16 rows=1 width=35) (actual time=0.024..0.025 rows=0 loops=1)
+   Index Cond: (customer_id = 5)
+   Buffers: shared read=1
+ Planning:
+   Buffers: shared hit=93 read=1
+ Planning Time: 0.774 ms
+ Execution Time: 0.149 ms
+(7 rows)
+
