@@ -1,6 +1,14 @@
 terraform {
   required_providers {
-    aws = { source = "hashicorp/aws", version = "~> 6.0" }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
+
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.7"
+    }
   }
 }
 
@@ -39,8 +47,8 @@ variable "environments" {
 # DEFECT: count over a list. Remove the middle environment and read the plan.
 # Today's session measured exactly what this does.
 resource "aws_s3_bucket" "env" {
-  count  = length(var.environments)
-  bucket = "${var.student}-capstone-${var.environments[count.index]}"
+  for_each = toset(var.environments)
+  bucket   = "${var.student}-capstone-${each.key}"
 }
 
 resource "aws_security_group" "api" {
@@ -52,7 +60,7 @@ resource "aws_security_group" "api" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["10.0.0.0/16"]
   }
 
   ingress {
@@ -70,4 +78,57 @@ resource "aws_security_group" "api" {
   }
 }
 
-output "buckets" { value = aws_s3_bucket.env[*].bucket }
+output "buckets" {
+  value = values(aws_s3_bucket.env)[*].bucket
+}
+
+data "archive_file" "lambda_package" {
+  type        = "zip"
+  source_file = "${path.module}/handler.py"
+  output_path = "${path.module}/lambda_handler.zip"
+}
+
+resource "aws_iam_role" "lambda" {
+  name = "${var.student}-capstone-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_lambda_function" "ingest" {
+  function_name    = "${var.student}-capstone-ingest"
+  role             = aws_iam_role.lambda.arn
+  handler          = "handler.lambda_handler"
+  runtime          = "python3.13"
+  filename         = data.archive_file.lambda_package.output_path
+  source_code_hash = data.archive_file.lambda_package.output_base64sha256
+}
+
+resource "aws_lambda_permission" "allow_s3" {
+  statement_id  = "AllowS3Invoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.ingest.function_name
+  principal     = "s3.amazonaws.com"
+  source_arn    = aws_s3_bucket.env["dev"].arn
+}
+
+resource "aws_s3_bucket_notification" "dev" {
+  bucket = aws_s3_bucket.env["dev"].id
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.ingest.arn
+    events              = ["s3:ObjectCreated:*"]
+  }
+
+  depends_on = [aws_lambda_permission.allow_s3]
+}
