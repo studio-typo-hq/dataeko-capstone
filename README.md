@@ -1,3 +1,5 @@
+[![CI](https://github.com/ThecrewLord/dataeko-capstone/actions/workflows/ci.yml/badge.svg)](https://github.com/ThecrewLord/dataeko-capstone/actions/workflows/ci.yml)
+
 # DATAEKO Capstone — Ship the Coffee Company
 
 Final assignment for the Studio Typo × DATAEKO five-week internship.

@@ -1,0 +1,7 @@
+BEFORE INDEX
+
+EXPLAIN ANALYZE SELECT * FROM orders WHERE customer_id = 4242;
+
+Parallel Seq Scan on orders
+Rows Removed by Filter: 133327
+Execution Time: 25.832 ms

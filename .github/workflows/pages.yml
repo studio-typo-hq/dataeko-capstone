@@ -1,0 +1,117 @@
+name: Deploy Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Create site
+        run: |
+          mkdir -p _site
+
+          cat > _site/index.html <<'HTML'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>DATAEKO Capstone — Ship the Coffee Company</title>
+            <style>
+              body {
+                font-family: system-ui, sans-serif;
+                max-width: 900px;
+                margin: 0 auto;
+                padding: 40px 20px;
+                line-height: 1.6;
+              }
+              .card {
+                border: 1px solid #ddd;
+                border-radius: 12px;
+                padding: 20px;
+                margin: 20px 0;
+              }
+              code {
+                background: #f4f4f4;
+                padding: 3px 6px;
+                border-radius: 4px;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>DATAEKO Capstone</h1>
+            <p><strong>Ship the Coffee Company</strong></p>
+
+            <div class="card">
+              <h2>Developer</h2>
+              <p>Name: Aditya Narayan Gour</p>
+              <p>GitHub: ThecrewLord</p>
+            </div>
+
+            <div class="card">
+              <h2>Database</h2>
+              <p>Orders: 400200</p>
+              <p>Customers, drinks, stores and deliveries are represented in the capstone database.</p>
+            </div>
+
+            <div class="card">
+              <h2>Phase 3 Query Answers</h2>
+              <ul>
+                <li>Never ordered drinks: turmeric latte, rose cardamom, affogato</li>
+                <li>Orders without a delivery row: 80000</li>
+                <li>Revenue by city: see <code>sql/queries/01_revenue_by_city.sql</code></li>
+                <li>Loyal customers: customers with more than 25 orders</li>
+              </ul>
+            </div>
+
+            <div class="card">
+              <h2>Container</h2>
+              <p>
+                <a href="https://github.com/ThecrewLord/dataeko-capstone/pkgs/container/dataeko-capstone">
+                  View the GHCR package
+                </a>
+              </p>
+            </div>
+
+            <div class="card">
+              <h2>Build</h2>
+              <p>Generated automatically by GitHub Actions.</p>
+              <p>Build date: <time id="build-date"></time></p>
+            </div>
+
+            <script>
+              document.getElementById("build-date").textContent =
+                new Date().toISOString().split("T")[0];
+            </script>
+          </body>
+          </html>
+          HTML
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

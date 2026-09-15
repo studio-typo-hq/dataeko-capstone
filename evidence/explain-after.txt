@@ -1,0 +1,7 @@
+AFTER INDEX
+
+EXPLAIN ANALYZE SELECT * FROM orders WHERE customer_id = 4242;
+
+Bitmap Index Scan on idx_orders_customer_id
+Index Cond: (customer_id = 4242)
+Execution Time: 0.349 ms

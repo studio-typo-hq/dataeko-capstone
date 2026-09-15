@@ -1,0 +1,37 @@
+# DATAEKO Capstone — Phase 4 PromQL Evidence
+
+## 1. Request rate over 5 minutes by endpoint
+
+Query:
+
+sum by (endpoint) (rate(capstone_requests_total[5m]))
+
+Output:
+
+{"status":"success","data":{"resultType":"vector","result":[{"metric":{"endpoint":"/orders"},"value":["1789495668.895","0.016949324908388897"]},{"metric":{"endpoint":"/health"},"value":["1789495668.895","0"]}]}}
+
+## 2. Error rate percentage of all requests
+
+Query:
+
+100 * sum(rate(capstone_requests_total{status=~"4..|5.."}[5m])) / sum(rate(capstone_requests_total[5m]))
+
+Output:
+
+{"status":"success","data":{"resultType":"vector","result":[{"metric":{},"value":["1789495671.553","0"]}]}}
+
+## 3. P95 latency
+
+Query:
+
+histogram_quantile(0.95, sum by (le) (rate(capstone_request_seconds_bucket[5m])))
+
+Output:
+
+{"status":"success","data":{"resultType":"vector","result":[{"metric":{},"value":["1789495674.035","0.06875"]}]}}
+
+## Explanation
+
+rate() calculates the per-second average increase of a Prometheus counter over the selected time range.
+
+histogram_quantile() estimates a percentile from Prometheus histogram buckets. Here it is used to calculate the p95 request latency.
