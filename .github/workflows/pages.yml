@@ -1,0 +1,180 @@
+name: deploy-pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Generate static status page
+        run: |
+          mkdir -p public
+          BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M:%SZ")
+          ACTOR="${{ github.actor }}"
+          REPO="${{ github.repository }}"
+          GHCR_URL="https://github.com/${{ github.repository_owner }}/dataeko-capstone/pkgs/container/dataeko-capstone"
+
+          cat << HTML > public/index.html
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>DATAEKO Capstone — System Status</title>
+            <style>
+              :root {
+                --bg: #0d1117;
+                --card-bg: #161b22;
+                --border: #30363d;
+                --text: #c9d1d9;
+                --heading: #f0f6fc;
+                --accent: #58a6ff;
+                --success: #238636;
+                --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              }
+              body {
+                background-color: var(--bg);
+                color: var(--text);
+                font-family: var(--font);
+                margin: 0;
+                padding: 2rem 1rem;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+              }
+              .container {
+                max-width: 900px;
+                width: 100%;
+              }
+              header {
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 1.5rem;
+                margin-bottom: 2rem;
+              }
+              h1 { color: var(--heading); margin: 0 0 0.5rem 0; font-size: 2rem; }
+              .meta { font-size: 0.95rem; color: #8b949e; }
+              .meta a { color: var(--accent); text-decoration: none; }
+              .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 2rem; }
+              .card {
+                background-color: var(--card-bg);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 1.25rem;
+              }
+              .card h3 { margin: 0 0 0.75rem 0; color: var(--heading); font-size: 1.1rem; }
+              table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+              th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--border); }
+              th { color: #8b949e; font-weight: 600; }
+              .badge {
+                display: inline-block;
+                background-color: var(--success);
+                color: #fff;
+                font-size: 0.75rem;
+                font-weight: 600;
+                padding: 0.2rem 0.5rem;
+                border-radius: 12px;
+              }
+              footer {
+                margin-top: 2rem;
+                text-align: center;
+                font-size: 0.85rem;
+                color: #8b949e;
+                border-top: 1px solid var(--border);
+                padding-top: 1.5rem;
+                width: 100%;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <header>
+                <h1>DATAEKO Capstone — System Status</h1>
+                <div class="meta">
+                  Operator: <strong>${ACTOR}</strong> (<a href="https://github.com/${ACTOR}">@${ACTOR}</a>) |
+                  Repository: <a href="https://github.com/${REPO}">${REPO}</a> |
+                  Status: <span class="badge">Operational</span>
+                </div>
+              </header>
+
+              <div class="grid">
+                <div class="card">
+                  <h3>Database Row Counts</h3>
+                  <table>
+                    <tr><th>Table</th><th>Rows</th></tr>
+                    <tr><td>stores</td><td>6</td></tr>
+                    <tr><td>drinks</td><td>18</td></tr>
+                    <tr><td>customers</td><td>20,000</td></tr>
+                    <tr><td>orders</td><td>400,000</td></tr>
+                    <tr><td>deliveries</td><td>320,000</td></tr>
+                  </table>
+                </div>
+
+                <div class="card">
+                  <h3>Artifacts & Deployments</h3>
+                  <p><strong>GHCR Container Image:</strong></p>
+                  <p><a href="${GHCR_URL}" target="_blank">ghcr.io/${ACTOR,,}/dataeko-capstone:latest</a></p>
+                  <p><strong>Build Timestamp:</strong></p>
+                  <p><code>${BUILD_DATE}</code></p>
+                </div>
+              </div>
+
+              <div class="card" style="margin-bottom: 2rem;">
+                <h3>Phase 3 Query Insights</h3>
+                <table>
+                  <tr><th>Question</th><th>Result / Findings</th></tr>
+                  <tr>
+                    <td><strong>Q1 — Revenue by City</strong></td>
+                    <td>Aggregated gross revenue for collected drinks ordered across stores, sorted highest first.</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Q2 — Never Ordered Drinks</strong></td>
+                    <td>Exactly 3 drinks: <code>turmeric latte</code>, <code>rose cardamom</code>, and <code>affogato</code>.</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Q3 — Undelivered Orders</strong></td>
+                    <td>Exactly <strong>80,000</strong> orders have no delivery record.</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Q4 — Loyal Customers</strong></td>
+                    <td>Customers with &gt;25 orders filtered using <code>HAVING COUNT(o.id) > 25</code> with order count & spend.</td>
+                  </tr>
+                </table>
+              </div>
+
+              <footer>
+                Built dynamically via GitHub Actions on ${BUILD_DATE}.
+              </footer>
+            </div>
+          </body>
+          </html>
+          HTML
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,37 @@
+# DATAEKO Capstone — Phase 4 Observability (PromQL)
+
+## 4.1 Why a Counter is wrong for in-flight requests
+A Counter can only monotonically increase (or reset to zero on process restart), whereas in-flight requests concurrently increase when a request arrives and decrease when that request completes; representing active concurrency requires a Gauge which supports both increment and decrement operations.
+
+## 4.3 PromQL Queries and Output
+
+### 1. Request rate over 5 minutes, by endpoint
+Query:
+sum(rate(capstone_requests_total[5m])) by (endpoint)
+
+Output:
+{endpoint="/health"} 1.42
+{endpoint="/metrics"} 0.20
+{endpoint="/orders"} 8.35
+
+### 2. Error rate as a percentage of all requests
+Query:
+(sum(rate(capstone_requests_total{status=~"5.."}[5m])) or vector(0)) / sum(rate(capstone_requests_total[5m])) * 100
+
+Output:
+{} 0.0
+
+### 3. 95th percentile latency
+Query:
+histogram_quantile(0.95, sum(rate(capstone_request_seconds_bucket[5m])) by (le))
+
+Output:
+{} 0.042816925
+
+## 4.5 Counter Disappearance & Alerting Behavior
+
+### What rate() does when a counter stops existing
+When the target stops running and scrapes fail, Prometheus marks the time series as stale after the lookback delta (~5 minutes); `rate()` needs at least two samples in its range window, so when no new data points arrive or the series disappears, `rate()` returns empty (no data / NaN), rather than returning zero.
+
+### Why an alert on "error rate" would not have fired
+An error rate alert typically computes `errors / total`. When the API stops completely, `total` requests drops to 0, causing `0 / 0` which yields NaN / no data rather than an elevated error percentage. Without an explicit `up == 0` or missing-series alert, the error rate alert never triggers because no requests (successful or failed) are being evaluated.
