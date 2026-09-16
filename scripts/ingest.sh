@@ -6,8 +6,8 @@ set -u
 STAGING="data/staging"
 mkdir -p "$STAGING"
 
-# DEFECT: $1 is not quoted. Try it with a path that has a space in it.
-if [ ! -f $1 ]; then
+# Validate the input file before staging it.
+if [ ! -f "$1" ]; then
   echo "no such file: $1" >&2
   exit 1
 fi

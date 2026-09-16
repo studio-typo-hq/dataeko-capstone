@@ -1,0 +1,12 @@
+DROP INDEX
+RESET
+                                                QUERY PLAN                                                 
+-----------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..428.60 rows=1 width=12) (actual time=0.656..0.656 rows=1 loops=1)
+   ->  Seq Scan on orders  (cost=0.00..8572.00 rows=20 width=12) (actual time=0.655..0.655 rows=1 loops=1)
+         Filter: (customer_id = 10612)
+         Rows Removed by Filter: 10610
+ Planning Time: 0.334 ms
+ Execution Time: 0.681 ms
+(6 rows)
+

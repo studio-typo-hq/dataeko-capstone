@@ -1,0 +1,38 @@
+Terraform used the selected providers to generate the following execution plan.
+Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # aws_security_group.api will be updated in-place
+  ~ resource "aws_security_group" "api" {
+        id          = "sg-01a2b3c4d5e6f7g8h"
+        name        = "testuser-capstone-api"
+        description = "capstone api"
+        tags        = {}
+      ~ tags_all    = {
+          - "Environment" = "manual-cli-change" -> null
+        }
+
+      ~ ingress {
+          ~ cidr_blocks = [
+              - "0.0.0.0/0",
+              + "127.0.0.1/32",
+            ]
+            description = ""
+            from_port   = 22
+            protocol    = "tcp"
+            to_port     = 22
+            # (3 unchanged attributes hidden)
+        }
+
+        # (2 unchanged blocks hidden)
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Note: Drift detected. The security group rule in the live account was modified
+via CLI out-of-band. Running terraform apply will revert the out-of-band change
+to match the declared infrastructure state in main.tf.
