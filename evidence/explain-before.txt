@@ -1,0 +1,7 @@
+Before adding idx_orders_customer_id:
+Gather
+  -> Parallel Seq Scan on orders
+        Filter: (customer_id = 4242)
+Execution Time: 4.845 ms
+
+The query filters orders by customer_id. Before the index, PostgreSQL reads the table sequentially.

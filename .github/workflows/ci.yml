@@ -5,19 +5,41 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python-version }}
       - run: pip install -r api/requirements.txt -r ingest/requirements.txt
       - run: pip install pytest
-      # DEFECT: a credential, in a file, in a public repository.
       - name: run tests
         env:
-          API_KEY: "dataeko-capstone-2026-secret"
+          API_KEY: ${{ secrets.API_KEY }}
+          PYTHONPATH: ${{ github.workspace }}
         run: pytest -v --junitxml=report.xml
-      # TODO (Phase 5): upload report.xml as an artifact.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pytest-report-${{ matrix.python-version }}
+          path: report.xml
 
-  # TODO (Phase 5): add a `build` job that builds the image and pushes it
-  # to ghcr.io/<your-lowercase-username>/dataeko-capstone:latest
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/dataeko-capstone:latest

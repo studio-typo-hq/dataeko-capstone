@@ -1,0 +1,35 @@
+name: pages
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Generate status page
+        shell: bash
+        run: |
+          mkdir -p _site
+          cat > _site/index.html <<EOF
+          <!doctype html><html><head><meta charset="utf-8"><title>DATAEKO Coffee Company</title><style>body{font:16px system-ui;max-width:820px;margin:4rem auto;padding:0 1rem;color:#24312a}h1{color:#8b4513}li{margin:.6rem 0}</style></head><body><h1>DATAEKO Coffee Company</h1><p>Student: Yuvanandhan R</p><p>GitHub username: ${{ github.repository_owner }}</p><h2>Database</h2><ul><li>stores: 6</li><li>drinks: 18</li><li>customers: 20,000</li><li>orders: 400,000</li><li>deliveries: 320,000</li></ul><h2>Phase 3 answers</h2><ul><li>Revenue by city: collected orders grouped by store city</li><li>Never ordered: turmeric latte, rose cardamom, affogato</li><li>Undelivered orders: 80,000</li><li>Loyal customers: customers with more than 25 orders</li></ul><p><a href="https://github.com/${{ github.repository_owner }}/dataeko-capstone/pkgs/container/dataeko-capstone">GHCR package</a></p><footer>Built on $(date -u +%F)</footer></body></html>
+          EOF
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

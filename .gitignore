@@ -1,4 +1,5 @@
 .venv/
+infra/handler.zip
 __pycache__/
 *.pyc
 .terraform/

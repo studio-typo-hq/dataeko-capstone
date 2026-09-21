@@ -2,6 +2,8 @@
 
 Final assignment for the Studio Typo × DATAEKO five-week internship.
 
+[![CI](https://github.com/yuvanandhanr/dataeko-capstone/actions/workflows/ci.yml/badge.svg)](https://github.com/yuvanandhanr/dataeko-capstone/actions/workflows/ci.yml)
+
 **→ Read [BRIEF.md](BRIEF.md). Everything is in there.**
 
 This repository is **deliberately broken**. It contains nine defects, one per

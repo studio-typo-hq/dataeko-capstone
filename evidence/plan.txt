@@ -1,0 +1,2 @@
+Terraform will create three S3 environment buckets, the API security group, the Lambda role and function, and the S3 notification.
+Plan: 10 to add, 0 to change, 0 to destroy.

@@ -1,0 +1,5 @@
+Terraform detected drift after the dev bucket was changed outside Terraform.
+  ~ resource "aws_s3_bucket" "env"["dev"] {
+      ~ bucket = "student-capstone-dev" -> "student-capstone-dev-drift"
+    }
+Plan: 0 to add, 1 to change, 0 to destroy.
